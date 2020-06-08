@@ -1,16 +1,28 @@
-<div class="panel-header panel-header-sm">
-</div>
+<div class="panel-header panel-header-sm"></div>
 <div class="main-content">
   <div class="row">
     <div class="col-md-12">
       <div class="card">
         <div class="card-header">
-          <h5 class="title">Monitor de CPU</h5>
+          <h2 class="title" align="center">Monitor de CPU</h2>
         </div>
         <div class="card-body">
-          <div class="typography-line">
-            <h1>
-              <span>Header 1</span>The Life of Now Ui Dashboard </h1>
+          <hr/>
+          <h3 class="card-subtitle mb-2 text-muted">Porcentaje de CPU utilizado: {{porcentajeUtilizado}}%</h3>
+          <hr/>
+          <h4>Gráfica de utilización de CPU</h4>
+          <div class="panel-header panel-header-lg">
+            <canvas
+              baseChart
+              id="bigDashboardChart"
+              [datasets]="lineBigDashboardChartData"
+              [labels]="lineBigDashboardChartLabels"
+              [colors]="lineBigDashboardChartColors"
+              [options]="lineBigDashboardChartOptions"
+              [chartType]="lineBigDashboardChartType"
+              (chartHover)="chartHovered($event)"
+              (chartClick)="chartClicked($event)"
+            ></canvas>
           </div>
         </div>
       </div>
