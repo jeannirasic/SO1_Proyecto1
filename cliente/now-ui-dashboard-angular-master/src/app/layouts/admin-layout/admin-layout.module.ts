@@ -16,7 +16,7 @@ import { ChartsModule } from 'ng2-charts';
 import { NgbModule } from '@ng-bootstrap/ng-bootstrap';
 import { ToastrModule } from 'ngx-toastr';
 import { CpuComponent } from '../../cpu/cpu.component';
-import { MatFormFieldModule } from '@angular/material';
+import { MatFormFieldModule, MatSortModule } from '@angular/material';
 import {MatTableModule} from '@angular/material/table';
 import { MatPaginatorModule } from '@angular/material';
 import {MatInputModule} from '@angular/material';
@@ -32,7 +32,8 @@ import {MatInputModule} from '@angular/material';
     MatFormFieldModule,
     MatTableModule,
     MatPaginatorModule,
-    MatInputModule
+    MatInputModule,
+    MatSortModule
   ],
   declarations: [
     DashboardComponent,
