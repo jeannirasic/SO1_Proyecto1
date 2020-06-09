@@ -25,12 +25,12 @@ static int escribir_archivo(struct seq_file * archivo, void *v) {
     seq_printf(archivo, "| Jeannira Del Rosario Sic Menéndez - 201602434    |\n");
     seq_printf(archivo, "| Fernando Vidal Ruiz Piox - 201503984             |\n");
     seq_printf(archivo, "|                                                  |\n");
-    seq_printf(archivo, "|              PARTE 1 DEL PROYECTO                |\n");
+    seq_printf(archivo, "|       PROYECTO (MODULO 1 - MEMORIA RAM)          |\n");
     seq_printf(archivo, "|__________________________________________________|\n");
     seq_printf(archivo, "  Sistema Operativo: Ubuntu 18.4\n");
     seq_printf(archivo, "  Memoria Total : \t %8lu KB - %8lu MB\n",total_memoria, total_memoria / 1024);
     seq_printf(archivo, "  Memoria Libre : \t %8lu KB - %8lu MB \n", memoria_libre, memoria_libre / 1024);
-    seq_printf(archivo, "  Memoria en uso: \t %i %%\n", (memoria_libre * 100)/total_memoria) ;
+    seq_printf(archivo, "  Memoria en uso: \t %i %%\n", (total_memoria - memoria_libre * 100)/total_memoria) ;
     return 0;
 }
 
