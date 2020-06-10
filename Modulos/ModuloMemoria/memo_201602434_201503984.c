@@ -19,6 +19,7 @@ static int escribir_archivo(struct seq_file * archivo, void *v) {
     si_meminfo(&inf);
     long total_memoria 	= (inf.totalram * 4);
     long memoria_libre 	= (inf.freeram * 4 );
+    long memoria_utilizada = total_memoria - memoria_libre;
     seq_printf(archivo, " __________________________________________________\n");
     seq_printf(archivo, "| Lab. Sistemas Operativos 1                       |\n");
     seq_printf(archivo, "| Vacaciones de Junio 2020                         |\n");
@@ -30,7 +31,8 @@ static int escribir_archivo(struct seq_file * archivo, void *v) {
     seq_printf(archivo, "  Sistema Operativo: Ubuntu 18.4\n");
     seq_printf(archivo, "  Memoria Total : \t %8lu KB - %8lu MB\n",total_memoria, total_memoria / 1024);
     seq_printf(archivo, "  Memoria Libre : \t %8lu KB - %8lu MB \n", memoria_libre, memoria_libre / 1024);
-    seq_printf(archivo, "  Memoria en uso: \t %i %%\n", (total_memoria - memoria_libre * 100)/total_memoria) ;
+    seq_printf(archivo, "  Memoria en uso : \t %8lu KB - %8lu MB \n", memoria_utilizada, memoria_utilizada / 1024);
+    seq_printf(archivo, "  Porcent. Memoria en uso: \t %i %%\n", (memoria_utilizada * 100)/total_memoria) ;
     return 0;
 }
 
