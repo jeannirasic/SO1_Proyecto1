@@ -1,3 +1,4 @@
+import { ServicioService } from './servicios/servicio.service';
 import { BrowserAnimationsModule } from '@angular/platform-browser/animations';
 import { NgModule } from '@angular/core';
 import { FormsModule } from '@angular/forms';
@@ -12,7 +13,6 @@ import { ComponentsModule } from './components/components.module';
 import { AppComponent } from './app.component';
 
 import { AdminLayoutComponent } from './layouts/admin-layout/admin-layout.component';
-
 
 
 @NgModule({
@@ -31,7 +31,7 @@ import { AdminLayoutComponent } from './layouts/admin-layout/admin-layout.compon
     AdminLayoutComponent
 
   ],
-  providers: [],
+  providers: [ServicioService],
   exports: [],
   bootstrap: [AppComponent]
 })

@@ -20,6 +20,7 @@ import { MatFormFieldModule, MatSortModule } from '@angular/material';
 import {MatTableModule} from '@angular/material/table';
 import { MatPaginatorModule } from '@angular/material';
 import {MatInputModule} from '@angular/material';
+import { ServicioService } from '../../servicios/servicio.service';
 
 @NgModule({
   imports: [
@@ -46,7 +47,8 @@ import {MatInputModule} from '@angular/material';
     PrincipalComponent,
     CpuComponent,
     RamComponent
-  ]
+  ],
+  // providers: [ServicioService]
 })
 
 export class AdminLayoutModule {}

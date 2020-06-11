@@ -13,12 +13,12 @@ import { CpuComponent } from '../../cpu/cpu.component';
 
 export const AdminLayoutRoutes: Routes = [
     { path: 'dashboard',      component: DashboardComponent },
-    { path: 'user-profile',   component: UserProfileComponent },
+    /*{ path: 'user-profile',   component: UserProfileComponent },
     { path: 'table-list',     component: TableListComponent },
     { path: 'typography',     component: TypographyComponent },
     { path: 'icons',          component: IconsComponent },
     { path: 'maps',           component: MapsComponent },
-    { path: 'notifications',  component: NotificationsComponent },
+    { path: 'notifications',  component: NotificationsComponent },*/
     { path: 'principal',      component: PrincipalComponent},
     { path: 'cpu',            component: CpuComponent},
     { path: 'ram',            component: RamComponent}

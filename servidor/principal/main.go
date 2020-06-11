@@ -1,13 +1,18 @@
 package main
 
 import (
+	"encoding/json"
 	"fmt"
 	"io/ioutil"
 	"log"
+	"net/http"
 	"strconv"
 	"strings"
+
+	"github.com/gorilla/mux"
 )
 
+//STRUCTS DE LA PARTE LOGICA
 type DatosRam struct {
 	total      float64
 	consumida  float64
@@ -15,12 +20,12 @@ type DatosRam struct {
 }
 
 type Procesos struct {
-	pid           float64
+	pid           int
 	nombre        string
 	usuario       string
 	estado        string
 	porcentajeRam float64
-	ppid          float64
+	ppid          int
 }
 
 type Usuario struct {
@@ -36,6 +41,35 @@ type Estadisticas struct {
 	total       int
 }
 
+//STRUCTS DEL WEB SERVICE
+type structRam struct {
+	Total      string `json:"total,omitempty"`
+	Consumida  string `json:"consumida,omitempty"`
+	Porcentaje string `json:"porcentaje,omitempty"`
+}
+
+type structProcesos struct {
+	Pid           string `json:"pid,omitempty"`
+	Nombre        string `json:"nombre,omitempty"`
+	Usuario       string `json:"usuario,omitempty"`
+	Estado        string `json:"estado,omitempty"`
+	PorcentajeRam string `json:"porcentajeram,omitempty"`
+	Ppid          string `json:"ppid,omitempty"`
+}
+
+type structEstadisticas struct {
+	Ejecucion   string `json:"ejecucion,omitempty"`
+	Suspendidos string `json:"suspendidos,omitempty"`
+	Detenidos   string `json:"detenidos,omitempty"`
+	Zombie      string `json:"zombie,omitempty"`
+	Total       string `json:"total,omitempty"`
+}
+
+type structKill struct {
+	Pid string `json:"pid,omitempty"`
+}
+
+//VARIABLES
 var (
 	arregloUsuarios       []Usuario
 	monitorRAM            = DatosRam{0, 0, 0}
@@ -44,9 +78,86 @@ var (
 )
 
 func main() {
+	//Leo los metodos para llenar las variables
 	obtenerUsuarios()
 	leerMeminfo()
 	leerProcesos()
+	//Inicio el codigo del servidor
+	router := mux.NewRouter()
+
+	router.HandleFunc("/", inicio)
+	router.HandleFunc("/principal1", informacionPrincipal1).Methods("GET", "OPTIONS")
+	router.HandleFunc("/principal2", informacionPrincipal2).Methods("GET", "OPTIONS")
+	router.HandleFunc("/ram", informacionRAM).Methods("GET", "OPTIONS")
+	router.HandleFunc("/cpu", informacionCPU).Methods("GET", "OPTIONS")
+	router.HandleFunc("/kill/{id}", matarProceso).Methods("POST", "OPTIONS")
+
+	fmt.Println("El servidor se ha iniciado en el puerto 3000")
+	log.Fatal(http.ListenAndServe(":3000", router))
+}
+
+//FUNCIONES DEL SERVIDOR-------------------------------------------------------------------------------------------------------------------------------
+//Esta funcion solo se agrego para que se vea bonito el servidor cuando inicia :)
+func inicio(w http.ResponseWriter, req *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+	fmt.Fprintf(w, "Proyecto 1 Sistemas Operativos 1 \nFernando Vidal Ruiz Piox - 201503984 \nJeannira Del Rosario Sic Menéndez - 201602434")
+}
+
+//Esta funcion va a devolver el json con la info de la pagina principal pero solo las estadisticas generales
+func informacionPrincipal1(w http.ResponseWriter, req *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+	informacion := structEstadisticas{strconv.Itoa(estadisticasGenerales.ejecucion), strconv.Itoa(estadisticasGenerales.suspendidos),
+		strconv.Itoa(estadisticasGenerales.detenidos), strconv.Itoa(estadisticasGenerales.zombie), strconv.Itoa(estadisticasGenerales.total)}
+	json.NewEncoder(w).Encode(informacion)
+}
+
+//Esta funcion va a devolver el json con la info de la pagina principal pero solo los procesos
+func informacionPrincipal2(w http.ResponseWriter, req *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+	leerProcesos()
+	temporalProcesos := []structProcesos{}
+	for i := 0; i < (len(listaProcesos)); i++ {
+		datoPid := strconv.Itoa(listaProcesos[i].pid)
+		datoNombre := listaProcesos[i].nombre
+		datoUsuario := listaProcesos[i].usuario
+		datoEstado := listaProcesos[i].estado
+		datoPorcentaje := fmt.Sprintf("%f", listaProcesos[i].porcentajeRam)
+		datoPpid := strconv.Itoa(listaProcesos[i].ppid)
+		proc := structProcesos{Pid: datoPid, Nombre: datoNombre, Usuario: datoUsuario, Estado: datoEstado, PorcentajeRam: datoPorcentaje,
+			Ppid: datoPpid}
+		temporalProcesos = append(temporalProcesos, proc)
+	}
+	json.NewEncoder(w).Encode(temporalProcesos)
+}
+
+//Esta funcion va a devolver el json con la informacion de la pagina de la RAM
+func informacionRAM(w http.ResponseWriter, req *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+	leerMeminfo()
+	informacion := structRam{fmt.Sprintf("%f", monitorRAM.total), fmt.Sprintf("%f", monitorRAM.consumida), fmt.Sprintf("%f", monitorRAM.porcentaje)}
+	json.NewEncoder(w).Encode(informacion)
+}
+
+//Esta funcion va a devolver el json con la informacion del CPU
+func informacionCPU(w http.ResponseWriter, req *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+}
+
+//Esta funcion va a matar el proceso especificado
+func matarProceso(w http.ResponseWriter, req *http.Request) {
+	w.Header().Set("Access-Control-Allow-Origin", "*")
+	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+	params := mux.Vars(req)
+	var valor structKill
+	//_ = json.NewDecoder(req.Body).Decode(&valor)
+	valor.Pid = params["id"]
+	//fmt.Println(valor.Pid) //Aca tengo que meter el comando
+	json.NewEncoder(w).Encode(valor)
 }
 
 //FUNCIONES PRINCIPALES--------------------------------------------------------------------------------------------------------------------------------
@@ -61,8 +172,8 @@ func leerMeminfo() {
 
 	contenidoArchivo := string(bytesLeidos)
 	archivoCortado := strings.Split(contenidoArchivo, "\n")
-	monitorRAM.total = (limpiarNumero(archivoCortado[0]) / 1000)
-	libre := limpiarNumero(archivoCortado[2]) / 1000
+	monitorRAM.total = (limpiarNumeroFloat(archivoCortado[0]) / 1000)
+	libre := limpiarNumeroFloat(archivoCortado[2]) / 1000
 	monitorRAM.consumida = (monitorRAM.total - libre)
 	monitorRAM.porcentaje = (monitorRAM.consumida / monitorRAM.total) * 100
 	//fmt.Printf("Total: %g Mb, Consumida: %g Mb, Porcentaje: %g \n", monitorRAM.total, monitorRAM.consumida, monitorRAM.porcentaje)
@@ -88,12 +199,12 @@ func leerProcesos() {
 				}
 				contenidoArchivo := string(bytesLeidos)
 				archivoCortado := strings.Split(contenidoArchivo, "\n")
-				pid := limpiarNumero(archivoCortado[5])
+				pid := limpiarNumeroInt(archivoCortado[5])
 				nombre := limpiarProc(archivoCortado[0])
 				usuario := limpiarUsuario(archivoCortado[8])
 				estado := limpiarEstado(archivoCortado[2])
 				porcentaje := (buscarPorcentajeRam(archivoCortado[17]))
-				ppid := limpiarNumero(archivoCortado[6])
+				ppid := limpiarNumeroInt(archivoCortado[6])
 				proceso := Procesos{pid, nombre, usuario, estado, porcentaje, ppid}
 				listaProcesos = append(listaProcesos, proceso)
 			}
@@ -124,7 +235,7 @@ func leerProcesos() {
 //Esta funcion devuelve el porcentaje de ram utilizado por cada procesos
 func buscarPorcentajeRam(cadena string) float64 {
 	if strings.HasPrefix(cadena, "VmSize") {
-		tamanioConvertido := limpiarNumero(cadena) / 1000
+		tamanioConvertido := limpiarNumeroFloat(cadena) / 1000
 		porcentaje := (tamanioConvertido / monitorRAM.total) * 100
 		return porcentaje
 	}
@@ -138,8 +249,8 @@ func limpiarProc(cadena string) string {
 	return sinEspacios
 }
 
-//Esta funcion es utilizada para quitar informacion innecesaria en una linea que contiene un numero y lo devuelve convertido
-func limpiarNumero(cadena string) float64 {
+//Esta funcion es utilizada para quitar informacion innecesaria en una linea que contiene un numero y lo devuelve convertido en float
+func limpiarNumeroFloat(cadena string) float64 {
 	cortado := strings.Split(cadena, ":")
 	sinEspacios := strings.TrimSpace(cortado[1])
 	final := strings.Fields(sinEspacios)
@@ -149,6 +260,19 @@ func limpiarNumero(cadena string) float64 {
 		return 0
 	}
 	return float64(retorno)
+}
+
+//Esta funcion es utilizada para quitar informacion innecesaria en una linea que contiene un numero y lo devuelve convertido en entero
+func limpiarNumeroInt(cadena string) int {
+	cortado := strings.Split(cadena, ":")
+	sinEspacios := strings.TrimSpace(cortado[1])
+	final := strings.Fields(sinEspacios)
+	retorno, error := strconv.Atoi(final[0])
+	if error != nil {
+		fmt.Println("Error al convertir: ", error)
+		return 0
+	}
+	return retorno
 }
 
 //Esta funcion busca si el nombre de una carpeta contiene un numero

@@ -11,7 +11,8 @@ export interface Procesos {
     nombre: string;
     usuario: string;
     estado: string;
-    ram: number;
+    porcentajeram: number;
+    ppid: number;
     booleano?: boolean;
 }
 
@@ -19,5 +20,11 @@ export interface ProcesoArbol {
     key: number;
     name: string;
     parent?: number;
+}
+
+export interface Ram {
+    total: number;
+    consumida: number;
+    porcentaje: number;
 }
 

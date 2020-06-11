@@ -1,4 +1,6 @@
+import { ServicioService } from './../servicios/servicio.service';
 import { Component, OnInit } from '@angular/core';
+import { Ram } from '../interfaces';
 @Component({
   selector: 'app-ram',
   templateUrl: './ram.component.html',
@@ -6,10 +8,7 @@ import { Component, OnInit } from '@angular/core';
 })
 export class RamComponent implements OnInit {
 
-  ramServidor = 0;
-  ramConsumida = 0;
-  porcentajeRam = 0;
-
+  ram: Ram;
   public lineBigDashboardChartType;
   public gradientStroke;
   public chartColor;
@@ -21,6 +20,9 @@ export class RamComponent implements OnInit {
   public lineBigDashboardChartLabels: Array<any>;
   public lineBigDashboardChartColors: Array<any>;
 
+
+  datosGrafica: number[] = new Array();
+  labelsGrafica: string[] = new Array();
 
   public chartClicked(e: any): void {
     console.log(e);
@@ -40,9 +42,55 @@ export class RamComponent implements OnInit {
       return 'rgb(' + r + ', ' + g + ', ' + b + ')';
     }
   }
-  constructor() { }
+  constructor(private servicio: ServicioService) {
+    this.actualizar();
+
+  }
+
+  actualizar() {
+    this.servicio.informacionRam().subscribe(data => {
+      this.ram = data;
+      this.datosGrafica.push(data.consumida);
+      this.labelsGrafica.push(this.timeGenerate());
+      this.grafica();
+    });
+  }
+
+
+  timeGenerate(): string {
+    const time = new Date();
+    const hours = time.getHours();
+    const minutes = time.getMinutes();
+    const seconds = time.getSeconds();
+
+    let cadenaHoras = '', cadenaMinutos = '', cadenaSegundos = '';
+    if (hours < 10) {
+      cadenaHoras = '0' + hours.toString();
+    } else {
+      cadenaHoras = hours.toString();
+    }
+
+    if (minutes < 10) {
+      cadenaMinutos = '0' + minutes.toString();
+    } else {
+      cadenaMinutos = minutes.toString();
+    }
+
+    if (seconds < 10) {
+      cadenaSegundos = '0' + seconds.toString();
+    } else {
+      cadenaSegundos = seconds.toString();
+    }
+
+    const cadenaFinal = cadenaHoras + ':' + cadenaMinutos + ':' + cadenaSegundos;
+    return cadenaFinal;
+}
 
   ngOnInit() {
+    this.grafica();
+  }
+
+  grafica() {
     this.chartColor = '#FFFFFF';
     this.canvas = document.getElementById('bigDashboardChart');
     this.ctx = this.canvas.getContext('2d');
@@ -66,7 +114,7 @@ export class RamComponent implements OnInit {
           fill: true,
           lineTension: 0,
           borderWidth: 2,
-          data: [50, 50, 100, 90, 30, 90, 50, 60, 20, 40, 90, 95]
+          data: this.datosGrafica
         }
       ];
       this.lineBigDashboardChartColors = [
@@ -79,7 +127,7 @@ export class RamComponent implements OnInit {
          pointHoverBorderColor: this.chartColor,
        }
      ];
-    this.lineBigDashboardChartLabels = ['0', '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', '11'];
+    this.lineBigDashboardChartLabels = this.labelsGrafica;
     this.lineBigDashboardChartOptions = {
 
           layout: {
