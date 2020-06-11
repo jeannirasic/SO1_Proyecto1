@@ -14,11 +14,37 @@ type DatosRam struct {
 	porcentaje float64
 }
 
+type Procesos struct {
+	pid           float64
+	nombre        string
+	usuario       string
+	estado        string
+	porcentajeRam float64
+	ppid          float64
+}
+
+type Usuario struct {
+	pid    int
+	nombre string
+}
+
+type Estadisticas struct {
+	ejecucion   int
+	suspendidos int
+	detenidos   int
+	zombie      int
+	total       int
+}
+
 var (
-	monitorRAM = DatosRam{0, 0, 0}
+	arregloUsuarios       []Usuario
+	monitorRAM            = DatosRam{0, 0, 0}
+	listaProcesos         []Procesos
+	estadisticasGenerales = Estadisticas{0, 0, 0, 0, 0}
 )
 
 func main() {
+	obtenerUsuarios()
 	leerMeminfo()
 	leerProcesos()
 }
@@ -39,16 +65,18 @@ func leerMeminfo() {
 	libre := limpiarNumero(archivoCortado[2]) / 1000
 	monitorRAM.consumida = (monitorRAM.total - libre)
 	monitorRAM.porcentaje = (monitorRAM.consumida / monitorRAM.total) * 100
-	fmt.Printf("Total: %g Mb, Consumida: %g Mb, Porcentaje: %g \n", monitorRAM.total, monitorRAM.consumida, monitorRAM.porcentaje)
+	//fmt.Printf("Total: %g Mb, Consumida: %g Mb, Porcentaje: %g \n", monitorRAM.total, monitorRAM.consumida, monitorRAM.porcentaje)
 }
 
-//Esta funcion es utilizada para obtener toda la informacion de los procesos. Hace uso del dato del total de la RAM calculado anteriormente
+/*Esta funcion es utilizada para obtener toda la informacion de los procesos y estadisticas generales.
+Hace uso del dato del total de la RAM calculado anteriormente*/
 func leerProcesos() {
 	archivos, err := ioutil.ReadDir("/proc/")
 	if err != nil {
 		log.Fatal(err)
 	}
 
+	listaProcesos = []Procesos{}
 	for _, archivo := range archivos {
 		if archivo.IsDir() {
 			nombreCarpeta := archivo.Name()
@@ -60,13 +88,35 @@ func leerProcesos() {
 				}
 				contenidoArchivo := string(bytesLeidos)
 				archivoCortado := strings.Split(contenidoArchivo, "\n")
-				fmt.Printf("PID: %s, Nombre: %s, Usuario: %s, Estado: %s, Porcentaje: %g \n", limpiarProc(archivoCortado[5]), limpiarProc(archivoCortado[0]),
-					limpiarUsuario(archivoCortado[8]), limpiarEstado(archivoCortado[2]), (buscarPorcentajeRam(archivoCortado[17])))
-
+				pid := limpiarNumero(archivoCortado[5])
+				nombre := limpiarProc(archivoCortado[0])
+				usuario := limpiarUsuario(archivoCortado[8])
+				estado := limpiarEstado(archivoCortado[2])
+				porcentaje := (buscarPorcentajeRam(archivoCortado[17]))
+				ppid := limpiarNumero(archivoCortado[6])
+				proceso := Procesos{pid, nombre, usuario, estado, porcentaje, ppid}
+				listaProcesos = append(listaProcesos, proceso)
 			}
 		}
 	}
 
+	estadisticasGenerales.total = len(listaProcesos)
+	contadorEjecucion, contadorSuspendidos, contadorDetenidos, contadorZombie := 0, 0, 0, 0
+	for i := 0; i < len(listaProcesos)-1; i++ {
+		if listaProcesos[i].estado == "R" {
+			contadorEjecucion++
+		} else if listaProcesos[i].estado == "S" {
+			contadorSuspendidos++
+		} else if listaProcesos[i].estado == "T" {
+			contadorDetenidos++
+		} else if listaProcesos[i].estado == "Z" {
+			contadorZombie++
+		}
+	}
+	estadisticasGenerales.ejecucion = contadorEjecucion
+	estadisticasGenerales.suspendidos = contadorSuspendidos
+	estadisticasGenerales.detenidos = contadorDetenidos
+	estadisticasGenerales.zombie = contadorZombie
 }
 
 //FUNCIONES AUXILIARES----------------------------------------------------------------------------------------------------------------------------
@@ -128,12 +178,22 @@ func buscarNumero(cadena string) bool {
 	}
 }
 
-//Esta funcion devuelve del UID del usuario de un proceso
+//Esta funcion devuelve el usuario de un proceso
 func limpiarUsuario(cadena string) string {
 	cortado := strings.Split(cadena, ":")
 	sinEspacios := strings.TrimSpace(cortado[1])
 	final := strings.Fields(sinEspacios)
-	return final[0]
+	id, error := strconv.Atoi(final[0])
+	if error != nil {
+		fmt.Println("Error al convertir: ", error)
+		return ""
+	}
+	for i := 0; i < len(arregloUsuarios)-1; i++ {
+		if id == arregloUsuarios[i].pid {
+			return arregloUsuarios[i].nombre
+		}
+	}
+	return ""
 }
 
 //Esta funcion devuelve solo la letra del estado en el que esta un proceso
@@ -142,4 +202,27 @@ func limpiarEstado(cadena string) string {
 	sinEspacios := strings.TrimSpace(cortado[1])
 	final := strings.Fields(sinEspacios)
 	return final[0]
+}
+
+//Esta funcion obtiene los usuarios del sistema y su id respectivo
+func obtenerUsuarios() {
+	nombreArchivo := "/etc/passwd"
+	bytesLeidos, err := ioutil.ReadFile(nombreArchivo)
+	if err != nil {
+		fmt.Printf("Error leyendo archivo: %v", err)
+	}
+
+	contenido := string(bytesLeidos)
+	arreglo := strings.Split(contenido, "\n")
+	for i := 0; i < len(arreglo)-1; i++ {
+		cortada := strings.Split(arreglo[i], ":")
+		pid, error := strconv.Atoi(cortada[2])
+		if error != nil {
+			fmt.Println("Error al convertir: ", error)
+		}
+		nombre := cortada[0]
+		usuario := Usuario{pid, nombre}
+		arregloUsuarios = append(arregloUsuarios, usuario)
+
+	}
 }
