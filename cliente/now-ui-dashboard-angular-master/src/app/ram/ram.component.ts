@@ -50,7 +50,7 @@ export class RamComponent implements OnInit {
   actualizar() {
     this.servicio.informacionRam().subscribe(data => {
       this.ram = data;
-      this.datosGrafica.push(data.consumida);
+      this.datosGrafica.push(data.porcentaje);
       this.labelsGrafica.push(this.timeGenerate());
       this.grafica();
     });

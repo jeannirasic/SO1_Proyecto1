@@ -8,7 +8,8 @@
         </div>
         <div class="card-body">
           <hr/>
-          <h3 class="card-subtitle mb-2 text-muted">Porcentaje de CPU utilizado: {{porcentajeUtilizado}}%</h3>
+          <h3 class="card-subtitle mb-2 text-muted">Porcentaje de CPU utilizado: {{porcentajeUtilizado.porcentaje}}%</h3>
+          <button type="button" class="btn btn-default" (click)="actualizar()">Default</button>
           <hr/>
           <h4>Gráfica de utilización de CPU</h4>
           <div class="panel-header panel-header-lg">

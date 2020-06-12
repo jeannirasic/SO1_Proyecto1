@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net/http"
+	"os/exec"
 	"strconv"
 	"strings"
 
@@ -69,12 +70,17 @@ type structKill struct {
 	Pid string `json:"pid,omitempty"`
 }
 
+type structCpu struct {
+	Porcentaje string `json:"porcentaje,omitempty"`
+}
+
 //VARIABLES
 var (
 	arregloUsuarios       []Usuario
 	monitorRAM            = DatosRam{0, 0, 0}
 	listaProcesos         []Procesos
 	estadisticasGenerales = Estadisticas{0, 0, 0, 0, 0}
+	monitorCPU            float64
 )
 
 func main() {
@@ -82,6 +88,7 @@ func main() {
 	obtenerUsuarios()
 	leerMeminfo()
 	leerProcesos()
+	leerStat()
 	//Inicio el codigo del servidor
 	router := mux.NewRouter()
 
@@ -146,6 +153,9 @@ func informacionRAM(w http.ResponseWriter, req *http.Request) {
 func informacionCPU(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
+	leerStat()
+	informacion := structCpu{fmt.Sprintf("%f", monitorCPU)}
+	json.NewEncoder(w).Encode(informacion)
 }
 
 //Esta funcion va a matar el proceso especificado
@@ -154,9 +164,11 @@ func matarProceso(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 	params := mux.Vars(req)
 	var valor structKill
-	//_ = json.NewDecoder(req.Body).Decode(&valor)
 	valor.Pid = params["id"]
-	//fmt.Println(valor.Pid) //Aca tengo que meter el comando
+	_, err := exec.Command("sh", "-c", "sudo -S pkill -SIGINT "+valor.Pid).Output()
+	if err != nil {
+		fmt.Printf("Error matando el proceso: %v", err)
+	}
 	json.NewEncoder(w).Encode(valor)
 }
 
@@ -228,6 +240,28 @@ func leerProcesos() {
 	estadisticasGenerales.suspendidos = contadorSuspendidos
 	estadisticasGenerales.detenidos = contadorDetenidos
 	estadisticasGenerales.zombie = contadorZombie
+}
+
+//Esta funcion es utilizada para obtener la informacion del cpu
+func leerStat() {
+	bytesLeidos, err := ioutil.ReadFile("/proc/stat")
+	if err != nil {
+		fmt.Printf("Error leyendo archivo: %v", err)
+		return
+	}
+
+	contenidoArchivo := string(bytesLeidos)
+	archivoCortado := strings.Split(contenidoArchivo, "\n") //split por salto de linea
+	//fmt.Printf("%s\n", archivoCortado[0])
+	primeraLinea := strings.Split(archivoCortado[0], " ") // cpu  360012 2703 109712 948527 101360 0 10511 0 0 0
+
+	s2 := limpiarCPU(primeraLinea[2])
+	s4 := limpiarCPU(primeraLinea[4])
+	s5 := limpiarCPU(primeraLinea[5])
+	//fmt.Printf("s2:%s s4:%s s5:%s\n", primeraLinea[2], primeraLinea[4], primeraLinea[5])
+
+	monitorCPU = (s2 + s4) * 100 / (s2 + s4 + s5)
+	//fmt.Printf("Porcentaje: %g %% \n", monitorCPU)
 }
 
 //FUNCIONES AUXILIARES----------------------------------------------------------------------------------------------------------------------------
@@ -349,4 +383,14 @@ func obtenerUsuarios() {
 		arregloUsuarios = append(arregloUsuarios, usuario)
 
 	}
+}
+
+//Esta funcion es utilizada para limpiar el dato del cpu
+func limpiarCPU(cadena string) float64 {
+	retorno, error := strconv.Atoi(cadena)
+	if error != nil {
+		fmt.Println("Error al convertir: ", error)
+		return 0
+	}
+	return float64(retorno)
 }

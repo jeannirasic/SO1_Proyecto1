@@ -37,7 +37,6 @@ export class PrincipalComponent implements OnInit {
           data[i].booleano = true;
         }
       }
-      console.log(data.length);
       this.listaProcesos = data;
       this.dataSource = new MatTableDataSource(this.listaProcesos);
       this.dataSource.paginator = this.paginator;
@@ -62,12 +61,15 @@ export class PrincipalComponent implements OnInit {
       this.resumen = data;
     }, error => {
       alert('Ha ocurrido un error al obtener las estadisticas generales');
-      console.log(error);
     });
   }
 
   terminar(e) {
-    console.log(e);
+    this.servicio.matarProceso(e.nombre).subscribe(data => {
+      alert('El proceso se ha eliminado existosamente');
+    }, error => {
+      alert('Hubo un error al eliminar el proceso');
+    });
   }
 
   ngOnInit() {

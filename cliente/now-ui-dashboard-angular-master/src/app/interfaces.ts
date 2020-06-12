@@ -28,3 +28,6 @@ export interface Ram {
     porcentaje: number;
 }
 
+export interface Cpu {
+    porcentaje: number;
+}
