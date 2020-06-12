@@ -1,12 +1,26 @@
 import { ServicioService } from './../servicios/servicio.service';
 import { Cpu } from './../interfaces';
-import { Component, OnInit } from '@angular/core';
+import { Component, OnInit, Output, Input, EventEmitter, ChangeDetectorRef } from '@angular/core';
+import { Subscription, Observable, timer } from 'rxjs';
+import * as moment from 'moment';
+
 @Component({
   selector: 'app-cpu',
   templateUrl: './cpu.component.html',
   styleUrls: ['./cpu.component.scss']
 })
 export class CpuComponent implements OnInit {
+
+  private subscription: Subscription;
+  @Output() TimerExpired: EventEmitter<any> = new EventEmitter<any>();
+  @Input() SearchDate: moment.Moment = moment();
+  @Input() ElapsTime = 5;
+  searchEndDate: moment.Moment;
+  remainingTime: number;
+  minutes: number;
+  seconds: number;
+  everySecond: Observable<number> = timer(0, 1000);
+
   porcentajeUtilizado: Cpu;
 
   public lineBigDashboardChartType;
@@ -41,10 +55,36 @@ export class CpuComponent implements OnInit {
       return 'rgb(' + r + ', ' + g + ', ' + b + ')';
     }
   }
-  constructor(private servicio: ServicioService) {
+  constructor(private servicio: ServicioService, private ref: ChangeDetectorRef) {
     this.actualizar();
-   }
+    this.searchEndDate = this.SearchDate.add(this.ElapsTime, 'seconds');
+  }
 
+  ngOnInit() {
+    this.grafica();
+    this.subscription = this.everySecond.subscribe((seconds) => {
+      const currentTime: moment.Moment = moment();
+      this.remainingTime = this.searchEndDate.diff(currentTime);
+      this.remainingTime = this.remainingTime / 1000;
+      if (this.remainingTime <= 0) {
+        this.SearchDate = moment();
+        this.searchEndDate = this.SearchDate.add(this.ElapsTime, 'seconds');
+        this.TimerExpired.emit();
+        console.log('Se acabo');
+        this.actualizar();
+      } else {
+        this.minutes = Math.floor(this.remainingTime / 60);
+        this.seconds = Math.floor(this.remainingTime - this.minutes * 60);
+      }
+      this.ref.markForCheck();
+      });
+  }
+
+  // tslint:disable-next-line:use-life-cycle-interface
+  ngOnDestroy(): void {
+    this.subscription.unsubscribe();
+  }
+  
   actualizar() {
     this.servicio.informacionCpu().subscribe(data => {
       this.porcentajeUtilizado = data;
@@ -85,9 +125,7 @@ export class CpuComponent implements OnInit {
     return cadenaFinal;
 }
 
-  ngOnInit() {
-    this.grafica();
-  }
+  
 
   grafica() {
     this.chartColor = '#FFFFFF';

@@ -1,9 +1,11 @@
 import { ServicioService } from '../servicios/servicio.service';
 import { ProcesoArbol } from './../interfaces';
-import {Component, OnInit, ViewChild} from '@angular/core';
 import {MatPaginator, MatSort, MatTableDataSource} from '@angular/material';
 import { Resumen, Procesos } from '../interfaces';
 import * as go from 'gojs';
+import { Component, OnInit, Output, Input, EventEmitter, ChangeDetectorRef, ViewChild } from '@angular/core';
+import { Subscription, Observable, timer } from 'rxjs';
+import * as moment from 'moment';
 
 let $ = go.GraphObject.make;
 
@@ -14,6 +16,16 @@ let $ = go.GraphObject.make;
 })
 export class PrincipalComponent implements OnInit {
 
+  private subscription: Subscription;
+  @Output() TimerExpired: EventEmitter<any> = new EventEmitter<any>();
+  @Input() SearchDate: moment.Moment = moment();
+  @Input() ElapsTime = 5;
+  searchEndDate: moment.Moment;
+  remainingTime: number;
+  minutes: number;
+  seconds: number;
+  everySecond: Observable<number> = timer(0, 1000);
+
   public myDiagram: go.Diagram = null;
 
   resumen: Resumen;
@@ -23,9 +35,34 @@ export class PrincipalComponent implements OnInit {
   dataSource: MatTableDataSource<Procesos>;
   @ViewChild(MatPaginator) paginator: MatPaginator;
   @ViewChild(MatSort) sort: MatSort;
-  constructor(private servicio: ServicioService) {
-    this.actualizarDatos();
 
+  constructor(private servicio: ServicioService, private ref: ChangeDetectorRef) {
+    this.actualizarDatos();
+    this.searchEndDate = this.SearchDate.add(this.ElapsTime, 'seconds');
+  }
+
+  ngOnInit() {
+    this.subscription = this.everySecond.subscribe((seconds) => {
+      const currentTime: moment.Moment = moment();
+      this.remainingTime = this.searchEndDate.diff(currentTime);
+      this.remainingTime = this.remainingTime / 1000;
+      if (this.remainingTime <= 0) {
+        this.SearchDate = moment();
+        this.searchEndDate = this.SearchDate.add(this.ElapsTime, 'seconds');
+        this.TimerExpired.emit();
+        console.log('Se acabo');
+        this.actualizarDatos();
+      } else {
+        this.minutes = Math.floor(this.remainingTime / 60);
+        this.seconds = Math.floor(this.remainingTime - this.minutes * 60);
+      }
+      this.ref.markForCheck();
+      });
+  }
+
+  // tslint:disable-next-line:use-life-cycle-interface
+  ngOnDestroy(): void {
+  this.subscription.unsubscribe();
   }
 
   actualizarDatos() {
@@ -70,9 +107,6 @@ export class PrincipalComponent implements OnInit {
     }, error => {
       alert('Hubo un error al eliminar el proceso');
     });
-  }
-
-  ngOnInit() {
   }
 
   // tslint:disable-next-line:use-life-cycle-interface
