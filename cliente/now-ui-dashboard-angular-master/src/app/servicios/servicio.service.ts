@@ -11,14 +11,9 @@ export class ServicioService {
 
   constructor(private http: HttpClient) { }
 
-  // Estadisticas generales
-  informacionPrincipal1() {
-    return this.http.get<Resumen>(this.url + 'principal1');
-  }
-
   // La informacion de los procesos
-  informacionPrincipal2() {
-    return this.http.get<Procesos[]>(this.url + 'principal2');
+  informacionPrincipal() {
+    return this.http.get<Procesos[]>(this.url + 'principal');
   }
 
   // Devuelve los datos de la RAM

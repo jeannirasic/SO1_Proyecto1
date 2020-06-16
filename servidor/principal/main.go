@@ -34,14 +34,6 @@ type Usuario struct {
 	nombre string
 }
 
-type Estadisticas struct {
-	ejecucion   int
-	suspendidos int
-	detenidos   int
-	zombie      int
-	total       int
-}
-
 //STRUCTS DEL WEB SERVICE
 type structRam struct {
 	Total      string `json:"total,omitempty"`
@@ -58,14 +50,6 @@ type structProcesos struct {
 	Ppid          string `json:"ppid,omitempty"`
 }
 
-type structEstadisticas struct {
-	Ejecucion   string `json:"ejecucion,omitempty"`
-	Suspendidos string `json:"suspendidos,omitempty"`
-	Detenidos   string `json:"detenidos,omitempty"`
-	Zombie      string `json:"zombie,omitempty"`
-	Total       string `json:"total,omitempty"`
-}
-
 type structKill struct {
 	Pid string `json:"pid,omitempty"`
 }
@@ -76,11 +60,10 @@ type structCpu struct {
 
 //VARIABLES
 var (
-	arregloUsuarios       []Usuario
-	monitorRAM            = DatosRam{0, 0, 0}
-	listaProcesos         []Procesos
-	estadisticasGenerales = Estadisticas{0, 0, 0, 0, 0}
-	monitorCPU            float64
+	arregloUsuarios []Usuario
+	monitorRAM      = DatosRam{0, 0, 0}
+	listaProcesos   []Procesos
+	monitorCPU      float64
 )
 
 func main() {
@@ -93,8 +76,7 @@ func main() {
 	router := mux.NewRouter()
 
 	router.HandleFunc("/", inicio)
-	router.HandleFunc("/principal1", informacionPrincipal1).Methods("GET", "OPTIONS")
-	router.HandleFunc("/principal2", informacionPrincipal2).Methods("GET", "OPTIONS")
+	router.HandleFunc("/principal", informacionPrincipal).Methods("GET", "OPTIONS")
 	router.HandleFunc("/ram", informacionRAM).Methods("GET", "OPTIONS")
 	router.HandleFunc("/cpu", informacionCPU).Methods("GET", "OPTIONS")
 	router.HandleFunc("/kill/{id}", matarProceso).Methods("POST", "OPTIONS")
@@ -111,17 +93,8 @@ func inicio(w http.ResponseWriter, req *http.Request) {
 	fmt.Fprintf(w, "Proyecto 1 Sistemas Operativos 1 \nFernando Vidal Ruiz Piox - 201503984 \nJeannira Del Rosario Sic Menéndez - 201602434")
 }
 
-//Esta funcion va a devolver el json con la info de la pagina principal pero solo las estadisticas generales
-func informacionPrincipal1(w http.ResponseWriter, req *http.Request) {
-	w.Header().Set("Access-Control-Allow-Origin", "*")
-	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
-	informacion := structEstadisticas{strconv.Itoa(estadisticasGenerales.ejecucion), strconv.Itoa(estadisticasGenerales.suspendidos),
-		strconv.Itoa(estadisticasGenerales.detenidos), strconv.Itoa(estadisticasGenerales.zombie), strconv.Itoa(estadisticasGenerales.total)}
-	json.NewEncoder(w).Encode(informacion)
-}
-
 //Esta funcion va a devolver el json con la info de la pagina principal pero solo los procesos
-func informacionPrincipal2(w http.ResponseWriter, req *http.Request) {
+func informacionPrincipal(w http.ResponseWriter, req *http.Request) {
 	w.Header().Set("Access-Control-Allow-Origin", "*")
 	w.Header().Set("Access-Control-Allow-Headers", "Content-Type")
 	leerProcesos()
@@ -137,6 +110,7 @@ func informacionPrincipal2(w http.ResponseWriter, req *http.Request) {
 			Ppid: datoPpid}
 		temporalProcesos = append(temporalProcesos, proc)
 	}
+	//fmt.Printf("Total: %v , Nuevo: %v, Temporal: %v \n", len(listaProcesos), estadisticasGenerales.total, len(temporalProcesos))
 	json.NewEncoder(w).Encode(temporalProcesos)
 }
 
@@ -219,27 +193,43 @@ func leerProcesos() {
 				ppid := limpiarNumeroInt(archivoCortado[6])
 				proceso := Procesos{pid, nombre, usuario, estado, porcentaje, ppid}
 				listaProcesos = append(listaProcesos, proceso)
+
+				leerProcesosHijos("/proc/"+nombreCarpeta+"/task", nombreCarpeta)
 			}
 		}
 	}
+}
 
-	estadisticasGenerales.total = len(listaProcesos)
-	contadorEjecucion, contadorSuspendidos, contadorDetenidos, contadorZombie := 0, 0, 0, 0
-	for i := 0; i < len(listaProcesos)-1; i++ {
-		if listaProcesos[i].estado == "R" {
-			contadorEjecucion++
-		} else if listaProcesos[i].estado == "S" {
-			contadorSuspendidos++
-		} else if listaProcesos[i].estado == "T" {
-			contadorDetenidos++
-		} else if listaProcesos[i].estado == "Z" {
-			contadorZombie++
+func leerProcesosHijos(ruta string, nombre string) {
+	archivos, err := ioutil.ReadDir(ruta)
+	if err != nil {
+		log.Fatal(err)
+	}
+
+	for _, archivo := range archivos {
+		if archivo.IsDir() {
+			nombreCarpeta := archivo.Name()
+			if buscarNumero(nombreCarpeta) {
+				if nombreCarpeta != nombre {
+					bytesLeidos, err := ioutil.ReadFile(ruta + "/" + nombreCarpeta + "/status")
+					if err != nil {
+						fmt.Printf("Error leyendo archivo: %v", err)
+						return
+					}
+					contenidoArchivo := string(bytesLeidos)
+					archivoCortado := strings.Split(contenidoArchivo, "\n")
+					pid := limpiarNumeroInt(archivoCortado[5])
+					nombre := limpiarProc(archivoCortado[0])
+					usuario := limpiarUsuario(archivoCortado[8])
+					estado := limpiarEstado(archivoCortado[2])
+					porcentaje := (buscarPorcentajeRam(archivoCortado[17]))
+					ppid := limpiarNumeroInt(archivoCortado[6])
+					proceso := Procesos{pid, nombre, usuario, estado, porcentaje, ppid}
+					listaProcesos = append(listaProcesos, proceso)
+				}
+			}
 		}
 	}
-	estadisticasGenerales.ejecucion = contadorEjecucion
-	estadisticasGenerales.suspendidos = contadorSuspendidos
-	estadisticasGenerales.detenidos = contadorDetenidos
-	estadisticasGenerales.zombie = contadorZombie
 }
 
 //Esta funcion es utilizada para obtener la informacion del cpu

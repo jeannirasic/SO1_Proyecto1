@@ -28,7 +28,7 @@ export class PrincipalComponent implements OnInit {
 
   public myDiagram: go.Diagram = null;
 
-  resumen: Resumen;
+  resumen: Resumen = {total: 0, ejecucion: 0, suspendidos: 0, detenidos: 0, zombie: 0};
   listaProcesos: Procesos[] = new Array();
   nodeDataArray: ProcesoArbol[] = new Array();
   displayedColumns: string[] = ['pid', 'nombre', 'usuario', 'estado', 'ram', 'accion'];
@@ -66,7 +66,7 @@ export class PrincipalComponent implements OnInit {
   }
 
   actualizarDatos() {
-    this.servicio.informacionPrincipal2().subscribe(data => {
+    this.servicio.informacionPrincipal().subscribe(data => {
       for (let i = 0; i < data.length; i++) {
         if (data[i].estado === 'T') {
           data[i].booleano = false;
@@ -90,15 +90,33 @@ export class PrincipalComponent implements OnInit {
         this.nodeDataArray.push(nuevo);
       }
       this.myDiagram.model = new go.TreeModel(this.nodeDataArray);
+
+      // Reviso lo de las estadisticas generales
+      let contadorEjecucion = 0, contadorSuspendidos = 0, contadorDetenidos = 0, contadorZombie = 0;
+      for (let i = 0; i < data.length; i++) {
+        if (data[i].estado === 'R') {
+          contadorEjecucion++;
+        } else if (data[i].estado === 'S') {
+          contadorSuspendidos++;
+        } else if (data[i].estado === 'T') {
+          contadorDetenidos++;
+        } else if (data[i].estado === 'Z') {
+          contadorZombie++;
+        }
+      }
+
+      const resumenTemp: Resumen = {
+        total: data.length,
+        ejecucion: contadorEjecucion,
+        suspendidos: contadorSuspendidos,
+        detenidos: contadorDetenidos,
+        zombie: contadorZombie
+      };
+      this.resumen = resumenTemp;
     }, error => {
       alert('Ha ocurrido un error al obtener la lista de procesos');
     });
 
-    this.servicio.informacionPrincipal1().subscribe(data => {
-      this.resumen = data;
-    }, error => {
-      alert('Ha ocurrido un error al obtener las estadisticas generales');
-    });
   }
 
   terminar(e) {
